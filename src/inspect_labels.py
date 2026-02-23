@@ -3,13 +3,17 @@ from pathlib import Path
 
 d = Path("datasets")
 
-for f in ["URL_dataset.csv", "Phishing_URLs.csv"]:
-    p = d / f
-    if not p.exists():
-        print("File not found:", p)
-        continue
+csvs = sorted(d.glob("*.csv"))
+if not csvs:
+    print("No CSV files found in datasets/")
+    raise SystemExit(1)
 
-    df = pd.read_csv(p)
+for p in csvs:
+    try:
+        df = pd.read_csv(p, dtype=str, low_memory=False)
+    except Exception as e:
+        print(f"[WARN] Failed to read {p}: {e}")
+        continue
 
     print("\n===", p.name, "rows:", len(df))
     print("columns:", df.columns.tolist())

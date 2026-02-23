@@ -1,0 +1,5 @@
+.venv/
+datasets/*.csv
+!datasets/URL.csv
+__pycache__/
+.env
