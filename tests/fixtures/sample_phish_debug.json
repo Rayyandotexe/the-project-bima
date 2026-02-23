@@ -1,0 +1,54 @@
+{
+  "url": "https://stardanaidzm.luckyfacex.my.id/",
+  "final_url": "https://stardanaidzm.luckyfacex.my.id/",
+  "parsed": {
+    "title": "DANA - Keuangan Digital",
+    "meta": {
+      "og:url": "https://www.dana.id/",
+      "og:title": "DANA - Keuangan Digital",
+      "og:description": "Bayar & kirim uang lewat DANA",
+      "og:image": "https://www.dana.id/logo.png"
+    },
+    "anchors": [
+      {"href": "#", "text": "Home"},
+      {"href": "#", "text": "Login"},
+      {"href": "#", "text": "Cara Top up"}
+    ],
+    "anchor_stats": {
+      "num_anchors": 3,
+      "num_hash_anchors": 3,
+      "percent_hash": 1.0,
+      "num_external": 0
+    },
+    "forms": [
+      {
+        "action": "login.php",
+        "method": "post",
+        "inputs": [
+          {"name": "username", "type": "text", "placeholder": "Masukkan Username"},
+          {"name": "password_text", "type": "text", "placeholder": "Password Anda"}
+        ],
+        "sensitive": true
+      }
+    ],
+    "num_forms": 1,
+    "num_scripts": 5,
+    "scripts_inline": ["/* inline script that builds form */", "document.write('<input name=\"password\"/>')"],
+    "scripts_src": [],
+    "images": ["https://www.dana.id/logo.png"],
+    "body_snippet": "<div>Masuk ke akun DANA</div>",
+    "page_features": {
+      "body_len": 85,
+      "text_ratio": 0.0143,
+      "num_anchors": 3,
+      "num_external_links": 0,
+      "num_forms": 1,
+      "num_scripts": 5,
+      "has_password_input": 0,
+      "forms_with_password": 0,
+      "percent_hash_anchors": 1.0,
+      "title_len": 20,
+      "final_url": "https://stardanaidzm.luckyfacex.my.id/"
+    }
+  }
+}

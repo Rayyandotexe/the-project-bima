@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>The Project Bima — Phishing Detector</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      .score-pill { font-weight:600; font-size:0.9rem; }
+      pre.json { max-height:300px; overflow:auto; background:#f8f9fa; padding:10px; border-radius:6px; }
+      .muted-small { font-size:.85rem; color:#6c757d; }
+    </style>
+  </head>
+  <body class="bg-light">
+    <div class="container py-5">
+      <h1 class="mb-4">Phishing URL Scanner</h1>
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <form method="POST" class="row g-2">
+            <div class="col-md-9">
+              <input name="url" class="form-control" placeholder="Enter URL (e.g. https://example.com)" required
+                     value="{{ request.form.get('url','') }}" />
+            </div>
+            <div class="col-md-3 d-grid">
+              <button class="btn btn-primary" type="submit">Scan</button>
+            </div>
+          </form>
+          <div class="mt-2 muted-small">Tip: you can also use the JSON API <code>/api/scan?url=...</code></div>
+        </div>
+      </div>
+
+      {% if result %}
+      {# normalize locals so template doesn't crash when keys missing #}
+      {% set r = result if result is mapping else {} %}
+      {% set crawler = r.get('crawler') or {} %}
+      {% set ml = r.get('ml') or {} %}
+      {% set rules = r.get('rules') or {} %}
+      {% set source = r.get('source') or 'unknown' %}
+      {% set final_label = (r.get('final_label') or r.get('label') or 'N/A') %}
+      {# compute an usable score_value (0..100) from available keys #}
+      {% set score_value = None %}
+      {% if r.get('final_score') is not none %}
+        {% set score_value = r.get('final_score') * 100 %}
+      {% elif r.get('score') is not none %}
+        {% set score_value = r.get('score') * 100 %}
+      {% elif ml.get('probability') is not none %}
+        {% set score_value = ml.get('probability') * 100 %}
+      {% endif %}
+
+      <div class="row">
+        <div class="col-md-8">
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5 class="card-title mb-3">Result for <small class="text-muted">{{ r.get('url') }}</small></h5>
+
+              {% if r.get('status') == 'error' or final_label == 'UNKNOWN' %}
+                <div class="alert alert-danger">
+                  <strong>Error:</strong>
+                  {{ r.get('error') or "Internal error or unknown result" }}
+                </div>
+              {% endif %}
+
+              <p>
+                <strong>Final label:</strong>
+                <span class="badge px-3 py-2 score-pill
+                      {% if final_label == 'PHISHING' %} bg-danger
+                      {% elif final_label == 'LEGIT' %} bg-success
+                      {% else %} bg-warning text-dark {% endif %}">
+                  {{ final_label }}
+                </span>
+                <small class="muted-small ms-2">source: {{ source }}</small>
+              </p>
+
+              <p>
+                <strong>Final score:</strong>
+                {% if score_value is not none %}
+                  <span class="me-2">{{ score_value|round(2) }}%</span>
+                  <div class="progress" style="height:10px; max-width:420px;">
+                    <div class="progress-bar" role="progressbar"
+                         style="width: {{ score_value|round(2) }}%;"
+                         aria-valuenow="{{ score_value|round(2) }}" aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                  </div>
+                {% else %}
+                  N/A
+                {% endif %}
+              </p>
+
+              <p>
+                <strong>Stage:</strong> {{ r.get('final_stage') or 'rules/ml' }}
+              </p>
+
+              {# ---- Rules / Crawler block (defensive access) ---- #}
+              <hr/>
+              <h6>Crawler & Rules</h6>
+              <p class="muted-small">
+                Status: <strong>{{ crawler.get('status') or 'N/A' }}</strong><br/>
+                Rules label: <strong>{{ crawler.get('rules_label') or rules.get('label') or 'N/A' }}</strong><br/>
+                Rules score: <strong>
+                  {% if crawler.get('rules_score') is not none %}
+                    {{ (crawler.get('rules_score') * 100)|round(2) }}%
+                  {% elif rules.get('score') is not none %}
+                    {{ (rules.get('score') * 100)|round(2) }}%
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </strong>
+              </p>
+
+              {% if rules.get('reasons') %}
+                <div class="mb-2">
+                  <strong>Reasons:</strong>
+                  <ul>
+                    {% for reason in rules.get('reasons') %}
+                      <li class="muted-small">{{ reason }}</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% endif %}
+
+              {% if crawler.get('screenshot') %}
+                <hr/>
+                <h6>Screenshot Evidence</h6>
+                <div class="mb-2">
+                  <img src="{{ crawler.get('screenshot') }}" alt="screenshot" class="img-fluid img-thumbnail" style="max-width:100%; height:auto;" />
+                  <div class="muted-small mt-1">Preview above. Right-click to save image.</div>
+                  <div class="mt-2">
+                    <a class="btn btn-sm btn-outline-primary" href="{{ crawler.get('screenshot') }}" target="_blank" rel="noopener">Open screenshot in new window</a>
+                  </div>
+                </div>
+              {% endif %}
+
+              {# ---- ML block ---- #}
+              {% if ml %}
+                <hr>
+                <h6>ML (fallback / hybrid)</h6>
+                <p class="muted-small">
+                  ML label: <strong>{{ 'PHISHING' if ml.get('label') == 1 else 'LEGIT' }}</strong><br/>
+                  Probability: <strong>
+                    {% if ml.get('probability') is not none %}{{ (ml.get('probability') * 100)|round(2) }}%{% else %}N/A{% endif %}
+                  </strong><br/>
+                  Confidence: <strong>{{ ml.get('confidence', 'N/A') }}%</strong>
+                </p>
+              {% else %}
+                <p class="text-muted"><em>ML not invoked (decision taken by rules or crawler).</em></p>
+              {% endif %}
+
+              {% if r.get('error') %}
+                <hr>
+                <p class="text-danger"><strong>Note:</strong> {{ r.get('error') }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          {# Debug & Explain panel #}
+          <div class="card mb-3">
+            <div class="card-body">
+              <h6>Explain / Debug</h6>
+              <small class="text-muted d-block mb-2">Useful info for debugging, model improvement and triage.</small>
+
+              <div class="mb-2">
+                <strong>Crawler parsed:</strong>
+                <pre class="json">{{ (crawler.get('parsed') or crawler.get('page_features') or {}) | tojson(indent=2) }}</pre>
+              </div>
+
+              <div class="mb-2">
+                <strong>ML output:</strong>
+                <pre class="json">{{ (ml or {}) | tojson(indent=2) }}</pre>
+              </div>
+
+              <div>
+                <strong>Full result:</strong>
+                <pre class="json">{{ r | tojson(indent=2) }}</pre>
+              </div>
+            </div>
+          </div>
+
+          {# Quick actions: API examples #}
+          <div class="card">
+            <div class="card-body">
+              <h6>Quick API</h6>
+              <small class="muted-small">Use these for automated checks</small>
+              <div class="mt-2">
+                <code class="d-block">GET /api/scan?url={{ r.get('url') }}</code>
+                <code class="d-block mt-1">GET /api/inspect?url={{ r.get('url') }}</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
